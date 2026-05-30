@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedAI — Bayesian Diagnosis Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f7f9fb;
+      --surface: #ffffff;
+      --teal: #0a7c6e;
+      --teal-light: #e6f4f2;
+      --amber: #f59e0b;
+      --red: #dc2626;
+      --text: #1a2332;
+      --muted: #64748b;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0 16px 60px;
+    }
+
+    h1, h2, h3, .heading {
+      font-family: 'Playfair Display', serif;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* ── HEADER ── */
+    header {
+      text-align: center;
+      padding: 40px 0 24px;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--teal);
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── PEAS CARD ── */
+    .peas-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      background: none;
+      border: 1.5px solid var(--teal);
+      color: var(--teal);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .peas-toggle-btn:hover { background: var(--teal-light); }
+
+    .peas-card {
+      background: var(--surface);
+      border-radius: 16px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+      padding: 20px 24px;
+      margin-top: 12px;
+      display: none;
+    }
+    .peas-card.open { display: block; }
+
+    .peas-card h3 {
+      font-size: 1rem;
+      margin-bottom: 14px;
+      color: var(--teal);
+    }
+
+    .peas-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .peas-table th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 6px 12px 6px 0;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    .peas-table td {
+      padding: 8px 12px 8px 0;
+      border-bottom: 1px solid #f1f5f9;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .peas-table tr:last-child td { border-bottom: none; }
+
+    /* ── PEAS TABS ── */
+    .peas-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 18px;
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .peas-tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      border-radius: 9px;
+      padding: 7px 10px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .peas-tab-btn.active {
+      background: var(--surface);
+      color: var(--teal);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+    }
+    .peas-panel { display: none; }
+    .peas-panel.active { display: block; }
+    .peas-table td ul {
+      margin: 4px 0 0 0;
+      padding-left: 18px;
+    }
+    .peas-table td ul li { margin-bottom: 3px; }
+    .peas-footnote {
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      line-height: 1.5;
+    }
+
+    /* ── PROGRESS BAR ── */
+    .progress-wrap {
+      margin: 28px 0 32px;
+    }
+
+    .steps-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex: none;
+    }
+
+    .step-connector {
+      flex: 1;
+      height: 3px;
+      background: #d1d5db;
+      transition: background 0.3s ease;
+      max-width: 80px;
+    }
+    .step-connector.done { background: var(--teal); }
+
+    .step-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border: 2.5px solid #d1d5db;
+      background: var(--surface);
+      color: var(--muted);
+      transition: all 0.2s ease;
+    }
+    .step-circle.active {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #fff;
+    }
+    .step-circle.done {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .step-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-align: center;
+      max-width: 70px;
+    }
+    .step-item.active .step-label { color: var(--teal); font-weight: 600; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border-radius: 16px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+      padding: 28px 28px 24px;
+      transition: box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 22px;
+    }
+
+    /* ── STEP PAGES ── */
+    .step-page { display: none; }
+    .step-page.active { display: block; }
+
+    /* ── SLIDER ── */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .slider-label { font-weight: 600; font-size: 0.9rem; }
+    .slider-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--teal);
+      min-width: 90px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 99px;
+      background: #d1d5db;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--teal);
+      cursor: pointer;
+      box-shadow: 0 1px 6px rgba(10,124,110,0.35);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--teal);
+      cursor: pointer;
+      border: none;
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 20px 0 10px;
+    }
+
+    /* ── PILL TOGGLES ── */
+    .pills-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      background: var(--surface);
+      border: 1.5px solid var(--teal);
+      color: var(--teal);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.83rem;
+      font-weight: 500;
+      padding: 8px 18px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      user-select: none;
+    }
+    .pill.selected {
+      background: var(--teal);
+      color: #fff;
+    }
+    .pill:hover:not(.selected) { background: var(--teal-light); }
+
+    /* ── OPTION CARDS ── */
+    .option-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .option-card {
+      border: 2px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      background: var(--surface);
+    }
+    .option-card:hover {
+      border-color: var(--teal);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.1);
+    }
+    .option-card.selected {
+      border-color: var(--teal);
+      background: var(--teal-light);
+    }
+    .option-card-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+    .option-card-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* ── INPUTS ── */
+    .inputs-row {
+      display: flex;
+      gap: 14px;
+      margin: 14px 0 10px;
+    }
+
+    .input-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .input-group input[type="number"] {
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 1.1rem;
+      font-family: 'IBM Plex Sans', sans-serif;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    .input-group input[type="number"]:focus { border-color: var(--teal); }
+
+    /* ── CLASSIFICATION BADGE ── */
+    .classification-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 16px;
+      border-radius: 99px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin: 8px 0 4px;
+    }
+    .badge-normal { background: #dcfce7; color: #166534; }
+    .badge-elevated { background: #fef9c3; color: #854d0e; }
+    .badge-high { background: #fee2e2; color: #991b1b; }
+    .badge-low { background: #dbeafe; color: #1e40af; }
+    .badge-unknown { background: #f1f5f9; color: var(--muted); }
+
+    /* ── CONFIDENCE LABELS ── */
+    .conf-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 8px;
+    }
+    .conf-high { color: #166534; }
+    .conf-med { color: #92400e; }
+    .conf-low { color: var(--muted); }
+
+    /* ── SYMPTOMS GRID ── */
+    .symptoms-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .symptoms-grid .pill {
+      text-align: center;
+      padding: 8px 6px;
+      font-size: 0.78rem;
+    }
+
+    /* ── FREE TEXT ── */
+    .freetext-wrap { margin-top: 4px; }
+    .freetext-wrap textarea {
+      width: 100%;
+      border: 1.5px solid #d1d5db;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.87rem;
+      color: var(--text);
+      resize: vertical;
+      min-height: 80px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .freetext-wrap textarea:focus { border-color: var(--teal); }
+
+    .detected-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      min-height: 28px;
+    }
+    .chip {
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 0.76rem;
+      font-weight: 600;
+    }
+    .chip-matched { background: var(--teal-light); color: var(--teal); }
+    .chip-unmatched { background: #fef3c7; color: #92400e; }
+
+    /* ── BUTTONS ── */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .btn {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-weight: 600;
+      font-size: 0.92rem;
+      padding: 12px 24px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: var(--teal);
+      color: #fff;
+      flex: 1;
+    }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: var(--text);
+      flex: none;
+      padding: 12px 20px;
+    }
+
+    .sub-option-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: #f1f5f9; margin: 18px 0; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .card { padding: 20px 16px 18px; }
+      .symptoms-grid { grid-template-columns: repeat(2, 1fr); }
+      .inputs-row { flex-direction: column; }
+      .step-label { display: none; }
+      .step-connector { max-width: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ── HEADER ── -->
+    <header>
+      <div class="logo">🩺 MedAI</div>
+      <div class="subtitle">Bayesian Diagnosis Agent · PEAS Framework</div>
+      <button class="peas-toggle-btn" onclick="togglePeas()" id="peas-btn">
+        <span>▸</span> What is PEAS?
+      </button>
+      <div class="peas-card" id="peas-card">
+        <h3>PEAS Framework</h3>
+
+        <!-- Tab switcher -->
+        <div class="peas-tabs">
+          <button class="peas-tab-btn active" onclick="switchPeasTab('software', this)">🖥️ Software Agent</button>
+          <button class="peas-tab-btn" onclick="switchPeasTab('robot', this)">🤖 Physical Robot Agent</button>
+        </div>
+
+        <!-- Software Agent panel -->
+        <div class="peas-panel active" id="peas-panel-software">
+          <table class="peas-table" style="border:2px solid #d1d5db; border-radius:8px; overflow:hidden; border-collapse:separate; border-spacing:0;">
+            <thead>
+              <tr><th style="border-bottom:2px solid #d1d5db; border-right:2px solid #d1d5db;">Component</th><th style="border-bottom:2px solid #d1d5db;">Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="border-right:2px solid #d1d5db; border-bottom:1px solid #e5e7eb;"><strong>Performance Measures</strong></td>
+                <td style="border-bottom:1px solid #e5e7eb;">Maximize diagnostic accuracy, minimize false negatives and false positives, detect critical conditions promptly, provide explainable predictions, achieve high confidence when sufficient data is available, generate timely recommendations.</td>
+              </tr>
+              <tr>
+                <td style="border-right:2px solid #d1d5db; border-bottom:1px solid #e5e7eb;"><strong>Environment</strong></td>
+                <td style="border-bottom:1px solid #e5e7eb;">Patient demographics (age, gender), medical history, pre-existing conditions, blood pressure status, cholesterol levels, symptoms, lifestyle factors, vital signs, and other health-related information provided by the patient.</td>
+              </tr>
+              <tr>
+                <td style="border-right:2px solid #d1d5db; border-bottom:1px solid #e5e7eb;"><strong>Actuators</strong></td>
+                <td style="border-bottom:1px solid #e5e7eb;">Generate ranked disease predictions with confidence scores, display risk/danger levels, provide diagnostic explanations, recommend medical tests, issue emergency alerts for critical conditions, suggest when to seek medical attention.</td>
+              </tr>
+              <tr>
+                <td style="border-right:2px solid #d1d5db;"><strong>Sensors</strong></td>
+                <td>Body Temperature Input, Heart Rate Input, Blood Pressure Input (systolic/diastolic in mmHg), Oxygen Saturation (SpO₂), Symptom Checklist, Blood Sugar Level, Medical History &amp; Demographics, Uploaded Health Reports (lab results, ECG scans, doctor notes), Camera (skin colour, eye assessment).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Physical Robot Agent panel -->
+        <div class="peas-panel" id="peas-panel-robot">
+          <table class="peas-table" style="border:2px solid #d1d5db; border-radius:8px; overflow:hidden; border-collapse:separate; border-spacing:0;">
+            <thead>
+              <tr><th style="border-bottom:2px solid #d1d5db; border-right:2px solid #d1d5db;">Component</th><th style="border-bottom:2px solid #d1d5db;">Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="border-right:2px solid #d1d5db; border-bottom:1px solid #e5e7eb;"><strong>Performance</strong></td>
+                <td style="border-bottom:1px solid #e5e7eb;">Accurate autonomous measurement of vitals within clinical tolerance · Real-time anomaly detection (arrhythmia, SpO₂ drop, fever spike) · Minimise patient discomfort and sensor contact time · Transmit structured data to inference engine within 2 seconds of reading</td>
+              </tr>
+              <tr>
+                <td style="border-right:2px solid #d1d5db; border-bottom:1px solid #e5e7eb;"><strong>Environment</strong></td>
+                <td style="border-bottom:1px solid #e5e7eb;">Physical patient body (skin, veins, airways, eyes); clinical or home environment (lighting, ambient noise, temperature); patient movement and cooperation level; prior readings stored in onboard or cloud memory.</td>
+              </tr>
+              <tr>
+                <td style="border-right:2px solid #d1d5db; border-bottom:1px solid #e5e7eb;"><strong>Actuators</strong></td>
+                <td style="border-bottom:1px solid #e5e7eb;">Inflatable BP cuff, pulse oximeter clip, infrared thermometer, ECG electrode array, motorised arm for patient positioning, audio/visual display panel for patient feedback</td>
+              </tr>
+              <tr>
+                <td style="border-right:2px solid #d1d5db;"><strong>Sensors</strong></td>
+                <td>Infrared Temperature Sensor, Heart Rate &amp; Rhythm Sensor (ECG leads + PPG), Blood Pressure Transducer, SpO₂ / Pulse Oximetry Sensor, Blood Glucose Sensor, Respiratory Sound Microphone, Camera / Visual Sensor.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- ── PROGRESS BAR ── -->
+    <div class="progress-wrap">
+      <div class="steps-row">
+        <div class="step-item active" id="step-item-1">
+          <div class="step-circle active" id="step-circle-1">1</div>
+          <div class="step-label">Profile</div>
+        </div>
+        <div class="step-connector" id="conn-1-2"></div>
+        <div class="step-item" id="step-item-2">
+          <div class="step-circle" id="step-circle-2">2</div>
+          <div class="step-label">Blood Pressure</div>
+        </div>
+        <div class="step-connector" id="conn-2-3"></div>
+        <div class="step-item" id="step-item-3">
+          <div class="step-circle" id="step-circle-3">3</div>
+          <div class="step-label">Cholesterol</div>
+        </div>
+        <div class="step-connector" id="conn-3-4"></div>
+        <div class="step-item" id="step-item-4">
+          <div class="step-circle" id="step-circle-4">4</div>
+          <div class="step-label">Symptoms</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         STEP 1 — PROFILE
+    ══════════════════════════════════ -->
+    <div class="step-page active" id="step-1">
+      <div class="card">
+        <div class="card-title">Tell us about yourself</div>
+
+        <!-- Age Slider -->
+        <div class="slider-row">
+          <span class="slider-label">Age</span>
+          <span class="slider-value" id="age-display">32 years</span>
+        </div>
+        <input type="range" id="age-slider" min="18" max="90" value="32"
+               oninput="document.getElementById('age-display').textContent = this.value + ' years'" />
+
+        <!-- Gender -->
+        <div class="section-label" style="margin-top:22px;">Gender</div>
+        <div class="pills-wrap" id="gender-pills">
+          <button class="pill" onclick="selectSingle('gender-pills', this)">Male</button>
+          <button class="pill" onclick="selectSingle('gender-pills', this)">Female</button>
+          <button class="pill" onclick="selectSingle('gender-pills', this)">Prefer not to say</button>
+        </div>
+
+        <!-- Pre-existing conditions -->
+        <div class="section-label">Do you have any pre-existing medical conditions?</div>
+        <div class="pills-wrap" id="conditions-pills">
+          <button class="pill" onclick="toggleCondition(this)">Diabetes</button>
+          <button class="pill" onclick="toggleCondition(this)">Hypertension</button>
+          <button class="pill" onclick="toggleCondition(this)">Asthma</button>
+          <button class="pill" onclick="toggleCondition(this)">Heart Disease</button>
+          <button class="pill" onclick="toggleCondition(this)">Kidney Disease</button>
+          <button class="pill" onclick="toggleCondition(this)">Liver Disease</button>
+          <button class="pill" onclick="toggleCondition(this)">Thyroid Disorder</button>
+          <button class="pill" onclick="toggleCondition(this)">Osteoporosis</button>
+          <button class="pill none-pill" onclick="toggleNone(this)">None</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goToStep(2)">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         STEP 2 — BLOOD PRESSURE
+    ══════════════════════════════════ -->
+    <div class="step-page" id="step-2">
+      <div class="card">
+        <div class="card-title">Blood Pressure</div>
+
+        <div class="option-cards" id="bp-has-reading">
+          <div class="option-card" onclick="selectBPMode('yes', this)">
+            <div class="option-card-title">✅ Yes, I have a reading</div>
+            <div class="option-card-sub">I have a BP machine or checked recently (within 2 weeks)</div>
+          </div>
+          <div class="option-card" onclick="selectBPMode('no', this)">
+            <div class="option-card-title">❌ No reading available</div>
+            <div class="option-card-sub">I don't have a BP machine or recent measurement</div>
+          </div>
+        </div>
+
+        <!-- BP YES section -->
+        <div id="bp-yes-section" style="display:none;">
+          <div class="inputs-row">
+            <div class="input-group">
+              <label>Systolic (mmHg)</label>
+              <input type="number" id="bp-systolic" min="60" max="250" placeholder="e.g. 120"
+                     oninput="updateBPBadge()" />
+            </div>
+            <div class="input-group">
+              <label>Diastolic (mmHg)</label>
+              <input type="number" id="bp-diastolic" min="40" max="150" placeholder="e.g. 80"
+                     oninput="updateBPBadge()" />
+            </div>
+          </div>
+          <div id="bp-badge"></div>
+          <div class="conf-label conf-high">✓ Direct reading — highest confidence</div>
+        </div>
+
+        <!-- BP NO section -->
+        <div id="bp-no-section" style="display:none;">
+          <div class="sub-option-cards">
+            <div class="option-card" onclick="selectBPDiagnosis('low', this)">
+              <div class="option-card-title">📋 Yes — LOW blood pressure (hypotension diagnosed)</div>
+            </div>
+            <div class="option-card" onclick="selectBPDiagnosis('high', this)">
+              <div class="option-card-title">📋 Yes — HIGH blood pressure (hypertension diagnosed)</div>
+            </div>
+            <div class="option-card" onclick="selectBPDiagnosis('unknown', this)">
+              <div class="option-card-title">❓ No known condition / I don't know</div>
+            </div>
+          </div>
+          <div id="bp-diag-label" class="conf-label" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(3)">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         STEP 3 — CHOLESTEROL
+    ══════════════════════════════════ -->
+    <div class="step-page" id="step-3">
+      <div class="card">
+        <div class="card-title">Cholesterol</div>
+
+        <div class="option-cards" id="chol-has-reading">
+          <div class="option-card" onclick="selectCholMode('yes', this)">
+            <div class="option-card-title">✅ Yes, I have a lab result (within the past year)</div>
+          </div>
+          <div class="option-card" onclick="selectCholMode('no', this)">
+            <div class="option-card-title">❌ No lab result available</div>
+          </div>
+        </div>
+
+        <!-- Cholesterol YES section -->
+        <div id="chol-yes-section" style="display:none;">
+          <div class="inputs-row">
+            <div class="input-group">
+              <label>Total Cholesterol (mg/dL)</label>
+              <input type="number" id="chol-value" min="50" max="500" placeholder="e.g. 180"
+                     oninput="updateCholBadge()" />
+            </div>
+          </div>
+          <div id="chol-badge"></div>
+          <div class="conf-label conf-high">✓ Lab result — highest confidence</div>
+        </div>
+
+        <!-- Cholesterol NO section -->
+        <div id="chol-no-section" style="display:none;">
+          <div class="sub-option-cards">
+            <div class="option-card" onclick="selectCholDiagnosis('high', this)">
+              <div class="option-card-title">📋 Yes — High cholesterol diagnosed (hypercholesterolemia)</div>
+            </div>
+            <div class="option-card" onclick="selectCholDiagnosis('unknown', this)">
+              <div class="option-card-title">❓ No known condition / I don't know</div>
+            </div>
+          </div>
+          <div id="chol-diag-label" class="conf-label" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(4)">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         STEP 4 — SYMPTOMS
+    ══════════════════════════════════ -->
+    <div class="step-page" id="step-4">
+      <div class="card">
+        <div class="card-title">Symptoms</div>
+
+        <div class="symptoms-grid" id="symptoms-grid">
+          <button class="pill" data-sym="fever" onclick="toggleSymptom(this)">Fever</button>
+          <button class="pill" data-sym="cough" onclick="toggleSymptom(this)">Cough</button>
+          <button class="pill" data-sym="fatigue" onclick="toggleSymptom(this)">Fatigue</button>
+          <button class="pill" data-sym="difficulty_breathing" onclick="toggleSymptom(this)">Difficulty Breathing</button>
+          <button class="pill" data-sym="headache" onclick="toggleSymptom(this)">Headache</button>
+          <button class="pill" data-sym="nausea" onclick="toggleSymptom(this)">Nausea</button>
+          <button class="pill" data-sym="vomiting" onclick="toggleSymptom(this)">Vomiting</button>
+          <button class="pill" data-sym="diarrhea" onclick="toggleSymptom(this)">Diarrhea</button>
+          <button class="pill" data-sym="chest_pain" onclick="toggleSymptom(this)">Chest Pain</button>
+          <button class="pill" data-sym="sore_throat" onclick="toggleSymptom(this)">Sore Throat</button>
+          <button class="pill" data-sym="runny_nose" onclick="toggleSymptom(this)">Runny Nose</button>
+          <button class="pill" data-sym="body_aches" onclick="toggleSymptom(this)">Body Aches</button>
+          <button class="pill" data-sym="chills" onclick="toggleSymptom(this)">Chills</button>
+          <button class="pill" data-sym="loss_of_appetite" onclick="toggleSymptom(this)">Loss of Appetite</button>
+          <button class="pill" data-sym="sweating" onclick="toggleSymptom(this)">Sweating</button>
+          <button class="pill" data-sym="dizziness" onclick="toggleSymptom(this)">Dizziness</button>
+          <button class="pill" data-sym="rash" onclick="toggleSymptom(this)">Rash</button>
+          <button class="pill" data-sym="joint_pain" onclick="toggleSymptom(this)">Joint Pain</button>
+          <button class="pill" data-sym="abdominal_pain" onclick="toggleSymptom(this)">Abdominal Pain</button>
+          <button class="pill" data-sym="back_pain" onclick="toggleSymptom(this)">Back Pain</button>
+          <button class="pill" data-sym="swollen_lymph_nodes" onclick="toggleSymptom(this)">Swollen Lymph Nodes</button>
+          <button class="pill" data-sym="frequent_urination" onclick="toggleSymptom(this)">Frequent Urination</button>
+          <button class="pill" data-sym="blurred_vision" onclick="toggleSymptom(this)">Blurred Vision</button>
+          <button class="pill" data-sym="numbness" onclick="toggleSymptom(this)">Numbness</button>
+          <button class="pill" data-sym="weight_loss" onclick="toggleSymptom(this)">Weight Loss</button>
+          <button class="pill" data-sym="night_sweats" onclick="toggleSymptom(this)">Night Sweats</button>
+          <button class="pill" data-sym="sneezing" onclick="toggleSymptom(this)">Sneezing</button>
+          <button class="pill" data-sym="itching" onclick="toggleSymptom(this)">Itching</button>
+          <button class="pill" data-sym="palpitations" onclick="toggleSymptom(this)">Palpitations</button>
+          <button class="pill" data-sym="loss_of_taste_smell" onclick="toggleSymptom(this)">Loss of Taste/Smell</button>
+        </div>
+
+        <!-- Free text -->
+        <div class="freetext-wrap">
+          <div class="section-label" style="margin-top:0; margin-bottom:8px;">Additional symptoms</div>
+          <textarea id="freetext-input" placeholder="Describe any other symptoms in your own words...&#10;e.g. 'I feel exhausted and have pressure behind my eyes'"
+                    oninput="parseFreeText(this.value)"></textarea>
+          <div class="detected-chips" id="detected-chips"></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goToStep(3)">← Back</button>
+          <button class="btn btn-primary" onclick="runDiagnosis()">🔍 Run Diagnosis</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RESULTS PLACEHOLDER ══ -->
+    <div id="results-page" style="display:none"></div>
+    <!-- RESULTS INJECTED IN NEXT STEP -->
+
+  </div><!-- /.container -->
+
+  <!-- diseases_data.js removed — disease knowledge base now lives in backend/diseases_data.json -->
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+
+  <script>
+    // ── PEAS TOGGLE ──
+    function togglePeas() {
+      const card = document.getElementById('peas-card');
+      const btn = document.getElementById('peas-btn');
+      card.classList.toggle('open');
+      btn.innerHTML = card.classList.contains('open')
+        ? '<span>▾</span> What is PEAS?'
+        : '<span>▸</span> What is PEAS?';
+    }
+
+    // ── PEAS TAB SWITCHER ──
+    function switchPeasTab(id, btn) {
+      document.querySelectorAll('.peas-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.peas-tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('peas-panel-' + id).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    // ── STEP NAVIGATION ──
+    let currentStep = 1;
+
+    function goToStep(n) {
+      document.getElementById('step-' + currentStep).classList.remove('active');
+      updateProgressBar(currentStep, n);
+      currentStep = n;
+      document.getElementById('step-' + n).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateProgressBar(from, to) {
+      for (let i = 1; i <= 4; i++) {
+        const circle = document.getElementById('step-circle-' + i);
+        const item = document.getElementById('step-item-' + i);
+        circle.classList.remove('active', 'done');
+        item.classList.remove('active');
+        if (i < to) {
+          circle.classList.add('done');
+          circle.textContent = '✓';
+        } else if (i === to) {
+          circle.classList.add('active');
+          circle.textContent = i;
+          item.classList.add('active');
+        } else {
+          circle.textContent = i;
+        }
+      }
+      for (let i = 1; i <= 3; i++) {
+        const conn = document.getElementById('conn-' + i + '-' + (i + 1));
+        conn.classList.toggle('done', i < to);
+      }
+    }
+
+
+  </script>
+</body>
+</html>
